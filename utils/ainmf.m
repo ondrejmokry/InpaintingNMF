@@ -230,7 +230,7 @@ for i = 1:maxit
 
     if verbose
         fprintf(repmat('\b',1,length(str)))
-        str = sprintf('%-4s Iteration %d of %d.\n', [method,':'], i, maxit);
+        str = sprintf('%-6s Iteration %d of %d.\n', [method,':'], i, maxit);
         fprintf('%s', str)
     end
 
