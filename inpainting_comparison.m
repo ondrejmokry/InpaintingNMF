@@ -141,9 +141,9 @@ LRE.p      = 512;         % AR model order
 
 %% tables for results
 % initialization
-types = {'cell','double','double','cell','cell','cell','cell','double','cell'};
-names = {'signal','fs','gap','clean','mask','restored','relnorms','time','SNR'};
-units = {'','Hz','ms','','','','','s','dB'};
+types = {'cell','double','double','cell','double','cell'};
+names = {'signal','fs','gap','relnorms','time','SNR'};
+units = {'','Hz','ms','','s','dB'};
 rows  = length(signums)*length(glengths);
 for m = 1:length(methods)
     tables.(methods{m}) = table('Size',[rows, length(types)],...
@@ -435,9 +435,6 @@ for signum = signums
             tables.(methods{m}).signal{row} = signals{signum};
             tables.(methods{m}).fs(row) = fs;
             tables.(methods{m}).gap(row) = glength;
-            tables.(methods{m}).clean{row} = signal;
-            tables.(methods{m}).mask{row} = mask;
-            tables.(methods{m}).restored{row} = restored(:,end);
             tables.(methods{m}).relnorms{row} = relnorms;
             tables.(methods{m}).time(row) = t;
             tables.(methods{m}).SNR{row} = SNR;
