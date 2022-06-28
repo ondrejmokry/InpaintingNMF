@@ -11,9 +11,9 @@ function [restored, W, H, relnorms, objectives] = ainmf(method,signal,mask,K,max
 %         problem
 %
 % input arguments
-%   method        switch between the algorithms 'EM-tf', 'EM-t', 'AM', or
+%   method        switch between the algorithms 'EMtf', 'EMt', 'AM', or
 %                 set an integer < maxit to identify the switching mode
-%                 from 'AM' to 'EM-tf'
+%                 from 'AM' to 'EMtf'
 %   signal        the input (degraded) signal
 %   mask          mask of the reliable samples
 %   K             number of components for NMF
@@ -224,7 +224,7 @@ for i = 1:maxit
         if i <= switchit
             method = 'AM';
         else
-            method = 'EM-tf';
+            method = 'EMtf';
         end
     end
 
@@ -243,7 +243,7 @@ for i = 1:maxit
 %                                                                         %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    if strcmpi(method,'EM-tf')
+    if strcmpi(method,'EMtf')
         parfor n = 1:N
             if sum(mmask(:,n)) == M && invertible
                 s         = invT*mdata(:,n);
@@ -268,7 +268,7 @@ for i = 1:maxit
             P(:,n) = abs(s).^2 + abs(diagSigma);
         end
     end
-    if strcmpi(method,'EM-t')
+    if strcmpi(method,'EMt')
         parfor n = 1:N
             if sum(mmask(:,n)) == M
                 s         = U*mdata(:,n);
