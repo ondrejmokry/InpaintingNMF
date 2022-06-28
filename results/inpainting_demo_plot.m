@@ -79,12 +79,7 @@ legend(methodnames)
 %% relative norms
 nexttile(tl)
 for method = 1:length(methods)
-    data = Inf(size(results.signals{method},2),1);
-    for i = 2:size(results.signals{method},2)
-        data(i) = norm(results.signals{method}(:,i)-results.signals{method}(:,i-1))...
-            /norm(results.signals{method}(:,i-1));
-    end
-    semilogy(data)
+    semilogy(results.relnorms{method})
     hold on
 end
 hold off

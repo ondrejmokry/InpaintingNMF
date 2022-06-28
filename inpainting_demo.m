@@ -53,6 +53,7 @@ results.Ws         = cell(length(methods),1);
 results.Hs         = cell(length(methods),1);
 results.SNRs       = cell(length(methods),1);
 results.objectives = cell(length(methods),1);
+results.relnorms   = cell(length(methods),1);
 
 for m = 1:length(methods)
     
@@ -76,15 +77,23 @@ for m = 1:length(methods)
         SNRs(i) = snr(y(~mask),y(~mask)-restored(~mask,i));
     end
     
+    % compute relative norms
+    relnorms = Inf(size(restored,2),1);
+    for i = 2:size(restored,2)
+        relnorms(i) = norm(restored(:,i)-restored(:,i-1))...
+            /norm(restored(:,i-1));
+    end
+    
     fprintf('     Elapsed time is %.1f seconds.\n',t)
     fprintf('     SNR is %.2f dB.\n',SNRs(end))
     
     % save
-    results.signals{m}    = restored;
+    results.signals{m}    = restored(:,end);
     results.Ws{m}         = W;
     results.Hs{m}         = H;
     results.SNRs{m}       = SNRs;
     results.objectives{m} = objectives;
+    results.relnorms{m}   = relnorms;
     
 end
 
