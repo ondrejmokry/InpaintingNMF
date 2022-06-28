@@ -10,4 +10,4 @@ Note that the psychoacoustically motivated metrics (PEMO-Q, PEAQ) are not comput
 1. uncommenting the lines related to signal saving in [inpainting_comparison.m](https://github.com/ondrejmokry/InpaintingNMF/blob/main/inpainting_comparison.m) and running the whole experiment,
 2. running the file [inpainting_comparison_add_odgs.m](https://github.com/ondrejmokry/InpaintingNMF/blob/main/inpainting_comparison_add_odgs.m).
 
-The PEAQ package is included in the [utils](https://github.com/ondrejmokry/InpaintingNMF/tree/main/utils) subfolder (acquired from [TSP Lab of McGill University](http://www-mmsp.ece.mcgill.ca/Documents/Software/). However, the PEMO-Q software is no longer publicly available, thus this functionality is limited.
+The PEAQ package is included in the [utils](https://github.com/ondrejmokry/InpaintingNMF/tree/main/utils) subfolder (acquired from [TSP Lab of McGill University](http://www-mmsp.ece.mcgill.ca/Documents/Software/)). However, the PEMO-Q software is no longer publicly available, thus this functionality is limited.
