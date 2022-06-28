@@ -152,8 +152,8 @@ for m = 1:length(methods)
 end
 
 % future folder for restored signals
-sigfold = ['results/signals/',filename(9:end-4)];
-[~,~] = mkdir(sigfold);
+% sigfold = ['results/signals/',filename(9:end-4)];
+% [~,~] = mkdir(sigfold);
 
 % if the experiment has been stopped, load the data
 if isfile(filename)
