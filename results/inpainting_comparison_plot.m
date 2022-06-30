@@ -13,6 +13,10 @@ fprintf('Loading %s...\n',filename)
 load(filename)
 signals = signals(signums);
 
+% reorder according to the submitted paper
+methods = methods([1, 2, 3, 8, 9, 7, 5, 4, 6, 10]);
+methodnames = methodnames([1, 2, 3, 8, 9, 7, 5, 4, 6, 10]);
+
 % measures
 measures = {'SNR','PEMOQ','PEAQ'};
 ylabels  = {'SNR (dB)','PEMO-Q ODG','PEAQ ODG'};
