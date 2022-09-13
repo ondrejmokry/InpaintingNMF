@@ -120,7 +120,7 @@ for gapcounter = 1:length(glengths)
     end
     legend(h,methodnames,'location','southeast')
     xlabel('iteration')
-    ylabel('SNR [dB]')
+    ylabel('SNR (dB)')
     title(sprintf('gap length %d ms',glengths(gapcounter)))
     xlim([0 50])
     
