@@ -5,7 +5,7 @@ addpath('utils')
 addpath(genpath('references'))
 
 % future file name
-filename = 'results/inpainting_comparison_01.mat';
+filename = 'results/inpainting_comparison_02.mat';
 
 %% settings
 load('signals/EBU_SQAM.mat')
@@ -429,7 +429,7 @@ for signum = signums
             end
             
             % command window output
-            fprintf('time: %4d s, SNR end: %6.2f dB, SNR max: %6.2f dB\n',round(t),SNR(end),max(SNR))
+            fprintf('time: %5d s, SNR end: %6.2f dB, SNR max: %6.2f dB\n',round(t),SNR(end),max(SNR))
 
             % write the data
             tables.(methods{m}).signal{row} = signals{signum};
@@ -454,8 +454,7 @@ for signum = signums
             'methods',...
             'signals',...
             'signums',...
-            'tables',...
-            '-v7.3')
+            'tables')
         
     end % gapnum
 
