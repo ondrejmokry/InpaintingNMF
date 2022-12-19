@@ -26,12 +26,6 @@ function [restored, W, H, relnorms, objectives] = ainmf(method,signal,mask,K,max
 %                 'M'       (2048)  length of the window
 %                 'a'       (1024)  window shift
 %                 'F'       (2048)  number of frequency channels
-%                 'T'       ([])    the synthesis operator (applied to each
-%                                   time frame), it can be either anonymous
-%                                   function or matrix
-%                 'U'       ([])    the analysis operator (applied to each
-%                                   time frame), it can be either anonymous
-%                                   function or matrix
 %                 'verbose' (false) controls the outputs to the command
 %                                   window
 %                 'drawing' (false) controls plotting additional data
@@ -48,6 +42,9 @@ function [restored, W, H, relnorms, objectives] = ainmf(method,signal,mask,K,max
 %                                   norm of the solution update
 %                 'tolobj'  (0)     stopping value for the relative
 %                                   objective change
+%                 'keepconj' (true) ensure complex-conjugate symmetry of
+%                                   the spectrum of real signals
+%                 'usegpu'  (false) perform the computations using gpuArray
 %
 % output arguments
 %   restored      the solution; if saveall is true, restored is of size
@@ -65,7 +62,7 @@ function [restored, W, H, relnorms, objectives] = ainmf(method,signal,mask,K,max
 %     Journal of Selected Topics in Signal Processing, 2021.
 %
 %
-% Date: 27/06/2022
+% Date: 01/10/2022
 % By Ondrej Mokry
 % Brno University of Technology
 % Contact: ondrej.mokry@mensa.cz
@@ -85,32 +82,34 @@ addParameter(pars,'saveall',false)
 addParameter(pars,'M',2048)
 addParameter(pars,'a',1024)
 addParameter(pars,'F',2048)
-addParameter(pars,'T',[])
-addParameter(pars,'U',[])
 addParameter(pars,'verbose',false)
 addParameter(pars,'drawing',false)
 addParameter(pars,'likelihood',[])
 addParameter(pars,'epsilon',1e-4)
 addParameter(pars,'tolsol',0)
 addParameter(pars,'tolobj',0)
+addParameter(pars,'keepconj',true)
+addParameter(pars,'usegpu',false)
+addParameter(pars,'usechol',false)
 
 % parse
 parse(pars, varargin{:})
 
 % save the parsed results to nice variables
-nmfit      = pars.Results.nmfit;
-saveall    = pars.Results.saveall;
-M          = pars.Results.M;
-a          = pars.Results.a;
-F          = pars.Results.F;
-T          = pars.Results.T;
-U          = pars.Results.U;
-verbose    = pars.Results.verbose;
-drawing    = pars.Results.drawing;
+nmfit = pars.Results.nmfit;
+saveall = pars.Results.saveall;
+M = pars.Results.M;
+a = pars.Results.a;
+F = pars.Results.F;
+verbose = pars.Results.verbose;
+drawing = pars.Results.drawing;
 likelihood = pars.Results.likelihood;
-epsilon    = pars.Results.epsilon;
-tolsol     = pars.Results.tolsol;
-tolobj     = pars.Results.tolobj;
+epsilon = pars.Results.epsilon;
+tolsol = pars.Results.tolsol;
+tolobj = pars.Results.tolobj;
+keepconj = pars.Results.keepconj;
+usegpu = pars.Results.usegpu;
+usechol = pars.Results.usechol;
 
 % handle the method parameter
 if isnumeric(method)
@@ -138,40 +137,38 @@ if drawing
 end
 
 %% constructing the operators T and U
-% if T and U are not set, we use the (potentionally oversampled) FFT
-if isempty(T) && isempty(U)
-    U = @(x) fft(x,F)/sqrt(F);
-    T = @(x) crop(ifft(x),M)*sqrt(F);
-end
-
-% if T or U are anonymous functions, convert them to matrices
-if isa(T, 'function_handle')
-    T = T(eye(F));
-end
-if isa(U, 'function_handle')
-    U = U(eye(M));
-end
-
-% precompute the inversion of T, if it exists
-if M == F && rank(T) == M
-    invT = inv(T);
-    invertible = true;
-else
-    invT = T';
-    invertible = false;
+Uop = @(x) fft(x,F)/sqrt(F);
+Top = @(x) crop(ifft(x),M)*sqrt(F);
+Tmat = Top(eye(F));
+Umat = Uop(eye(M));
+if usegpu
+    Tmat = gpuArray(Tmat);
+    Umat = gpuArray(Umat);
 end
 
 %% initialization
 % signal padding
-L    = ceil(length(signal)/a)*a; % + (ceil(M/a)-1)*a;
-N    = L/a; % number of signal segments
+L = ceil(length(signal)/a)*a; % + (ceil(M/a)-1)*a;
+N = L/a; % number of signal segments
 data = [signal; zeros(L-length(signal),1)];
 mask = [mask; true(L-length(signal),1)]; % logical mask of the reliable samples
 
 % random initialization of the parameters W, H
 rng(0)
-W = 0.5*(1.5*abs(randn(F,K))+0.5); % taken from betaNTF
-H = 0.5*(1.5*abs(randn(K,N))+0.5); % taken from betaNTF except for the shape
+W = 0.5*(1.5*abs(randn(F, K))+0.5); % taken from betaNTF
+H = 0.5*(1.5*abs(randn(K, N))+0.5); % taken from betaNTF except for the shape
+if usegpu
+    W = gpuArray(W);
+    H = gpuArray(H);
+end
+
+% isconj = @(X) norm(X(floor(F/2)+2:end,:) - conj(flipud(X(2:floor(F/2),:)))) < 1e-10;
+
+% ensure symmetry of W if desired
+% (conjugacy is not necessary since W is real)
+if keepconj
+    W(floor(F/2)+2:end,:) = flipud(W(2:floor(F/2),:));
+end
 
 % initialize the solution matrix
 if saveall
@@ -179,9 +176,16 @@ if saveall
 else
     mrestored = zeros(M,N);
 end
-
+if usegpu
+    if saveall
+        mrestored_all = gpuArray(mrestored_all);
+    else
+        mrestored = gpuArray(mrestored);
+    end
+end
+    
 % construct the analysis and synthesis windows
-g    = gabwin('sine', a, M, L);
+g = gabwin('sine', a, M, L);
 gana = normalize(g,'peak'); % peak-normalization of the analysis window
 gana = fftshift(gana);
 gsyn = gabdual(gana, a, M)*M; % computing the synthesis window
@@ -198,13 +202,17 @@ for n = 1:N
     mdata(:,n) = data(indices) .* gana;
     mmask(:,n) = mask(indices);
 end
+if usegpu
+    mdata = gpuArray(mdata);
+    mmask = gpuArray(mmask);
+end
 
-% saving some time by precomputing U*T for EM-t
-UT = U*T;
+% saving some time by precomputing U*T for EM2
+UT = Umat*Tmat;
 
 % if desired, initialize the relative norm and objective values
 if nargout > 3 || tolsol > 0
-    relnorms    = NaN(maxit,1);
+    relnorms = NaN(maxit,1);
     presolution = NaN(L,1);
 end
 if nargout > 4 || tolobj > 0
@@ -245,23 +253,31 @@ for i = 1:maxit
 
     if strcmpi(method,'EMtf')
         parfor n = 1:N
-            if sum(mmask(:,n)) == M && invertible
-                s         = invT*mdata(:,n);
+            if sum(mmask(:,n)) == M
+                s = Uop(mdata(:,n));
                 diagSigma = 0;
             else
-                MT        = T(mmask(:,n),:); %#ok<*PFBNS>
-                DTM       = MT'.*V(:,n);
-                MTDTM     = MT*DTM;
-                DTMMTDTM  = DTM/MTDTM;
-                s         = DTMMTDTM*mdata(mmask(:,n),n);
+                MT = Tmat(mmask(:,n),:); %#ok<*PFBNS>
+                DTM = MT'.*V(:,n);
+                MTDTM = MT*DTM;
+                if keepconj
+                    MTDTM = real(MTDTM);
+                end
+                if usechol
+                    R = chol(real(MTDTM));
+                    DTMMTDTM = (DTM/R)/R';
+                else
+                    DTMMTDTM = DTM/MTDTM;
+                end
+                s = DTMMTDTM*mdata(mmask(:,n),n);
                 diagSigma = V(:,n) - sum(DTMMTDTM .* conj(DTM), 2);
             end
             
             % saving the current solution
             if saveall
-                mrestored_all(:,i,n) = real(T*s); 
+                mrestored_all(:,i,n) = real(Top(s)); 
             else
-                mrestored(:,n) = real(T*s);
+                mrestored(:,n) = real(Top(s));
             end
             
             % posterior power spectrum
@@ -271,22 +287,30 @@ for i = 1:maxit
     if strcmpi(method,'EMt')
         parfor n = 1:N
             if sum(mmask(:,n)) == M
-                s         = U*mdata(:,n);
+                s = Uop(mdata(:,n));
                 diagSigma = 0;
             else
-                MT        = T(mmask(:,n),:); %#ok<*PFBNS>
-                DTM       = MT'.*V(:,n);
-                MTDTM     = MT*DTM;
-                DTMMTDTM  = DTM/MTDTM;
-                s         = UT*(DTMMTDTM*mdata(mmask(:,n),n));
-                diagSigma = sum((UT*(diag(V(:,n)) - DTMMTDTM*DTM')) .* conj(UT), 2);
+                MT = Tmat(mmask(:,n),:); %#ok<*PFBNS>
+                DTM = MT'.*V(:,n);
+                MTDTM = MT*DTM;
+                if keepconj
+                    MTDTM = real(MTDTM);
+                end
+                if usechol
+                    R = chol(real(MTDTM));
+                    DTMMTDTM = (DTM/R)/R';
+                else
+                    DTMMTDTM = DTM/MTDTM;
+                end
+                s = Uop(Top(DTMMTDTM*mdata(mmask(:,n),n)));
+                diagSigma = sum((Uop(Top(diag(V(:,n)) - DTMMTDTM*DTM'))) .* conj(UT), 2);
             end
             
             % saving the current solution
             if saveall
-                mrestored_all(:,i,n) = real(T*s); 
+                mrestored_all(:,i,n) = real(Top(s)); 
             else
-                mrestored(:,n) = real(T*s);
+                mrestored(:,n) = real(Top(s));
             end
             
             % posterior power spectrum
@@ -298,14 +322,22 @@ for i = 1:maxit
             % signal update
             if sum(mmask(:,n)) == M
                 xhat = mdata(:,n);
-                s    = invT*xhat;
+                s = Uop(xhat);
             else
-                MT    = T(mmask(:,n),:); %#ok<*PFBNS>
-                DTM   = MT'.*V(:,n);
+                MT = Tmat(mmask(:,n),:); %#ok<*PFBNS>
+                DTM = MT'.*V(:,n);
                 MTDTM = MT*DTM;
-                MTDTMx = MTDTM\mdata(mmask(:,n),n);
-                s     = DTM*MTDTMx; % useful later for power spectrum
-                xhat  = T*s;
+                if keepconj
+                    MTDTM = real(MTDTM);
+                end
+                if usechol
+                    R = chol(real(MTDTM));
+                    MTDTMx = R\(R'\mdata(mmask(:,n),n));
+                else
+                    MTDTMx = MTDTM\mdata(mmask(:,n),n);
+                end
+                s = DTM*MTDTMx; % useful later for power spectrum
+                xhat = Top(s);
             end
 
             % saving the current solution
@@ -397,12 +429,12 @@ for i = 1:maxit
             end
         end
         if strcmpi(likelihood,'observation')
-            objectives(i) = objectiveObservation(V,T,mmask,mdata);
+            objectives(i) = objectiveObservation(V,Tmat,mmask,mdata,keepconj);
         else
             if saveall
                 mrestored = squeeze(mrestored_all(:,i,:));
             end
-            objectives(i) = objectiveFull(V,T,mmask,mrestored);
+            objectives(i) = objectiveFull(V,Tmat,mmask,mrestored,keepconj);
         end
         
         % stop execution if objective computation fails
@@ -517,14 +549,18 @@ end
 %% functions
 % the objective function computed only from the observed samples
 % (default in EM-tf or EM-t)
-function val = objectiveObservation(V,T,mmask,mdata)
+function val = objectiveObservation(V,T,mmask,mdata,keepconj)
     N = size(V,2);
     val = NaN(N,1);
     parfor n = 1:N
-        MT      = T(mmask(:,n),:);
-        DTM     = MT'.*V(:,n);
-        MTDTM   = MT*DTM;
-        MTDTM   = (MTDTM + MTDTM')/2; % ensure real diagonal
+        MT = T(mmask(:,n),:);
+        DTM = MT'.*V(:,n);
+        MTDTM = MT*DTM;
+        if keepconj
+            MTDTM = real(MTDTM);
+        else
+            MTDTM = (MTDTM + MTDTM')/2; % ensure real diagonal
+        end
         [R, er] = chol(MTDTM); % useful for stable determinant computation
         if ~er
             val(n) = sum(mmask(:,n)) * log(pi)...
@@ -537,13 +573,17 @@ end
 
 % the objective function computed from the whole recovered signal
 % (default in AM)
-function val = objectiveFull(V,T,mmask,mrestored)
+function val = objectiveFull(V,T,mmask,mrestored,keepconj)
     N = size(V,2);
     val = NaN(N,1);
     parfor n = 1:N
-        xhat    = mrestored(:,n);
-        TDT     = T*(T'.*V(:,n));
-        TDT     = (TDT + TDT')/2; % ensure real diagonal
+        xhat = mrestored(:,n);
+        TDT = T*(T'.*V(:,n));
+        if keepconj
+            TDT = real(TDT);
+        else
+            TDT = (TDT + TDT')/2; % ensure real diagonal
+        end
         [R, er] = chol(TDT); % useful for stable determinant computation
         if ~er
             val(n) = length(mmask(:,n)) * log(pi)...
