@@ -12,15 +12,15 @@ intervals = false;
 fprintf('Loading %s...\n',filename)
 load(filename)
 signals = signals(signums);
-
-% reorder according to the submitted paper
-methods = methods([1, 2, 3, 8, 9, 7, 5]);
-methodnames = methodnames([1, 2, 3, 8, 9, 7, 5]);
+methods = methods([1,2,3,8,9,7,5]);
 
 % measures
-measures = {'SNR','PEMOQ','PEAQ'};
-ylabels  = {'SNR (dB)','PEMO-Q ODG','PEAQ ODG'};
-variants = {'end','max'};
+% measures = {'SNR','PEMOQ','PEAQ'};
+% ylabels  = {'SNR (dB)','PEMO-Q ODG','PEAQ ODG'};
+% variants = {'end','max'};
+measures = {'SNR','PEMOQ'};
+ylabels  = {'SNR (dB)','PEMO-Q ODG'};
+variants = {'max'};
 
 % prepare figure for SNR and ODG
 f_data = figure('visible','off','windowstate','maximized');
@@ -163,7 +163,7 @@ for measure = 1:length(measures)
 
             % plot
             plot(glengths,squeeze(data(s,:,:)))
-            legend(methodnames)
+            legend(methods)
             xlabel('gap length (ms)')
             ylabel(ylabels{measure})
             title(signals{s},'interpreter','none')
