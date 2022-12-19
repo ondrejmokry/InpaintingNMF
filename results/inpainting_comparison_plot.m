@@ -13,6 +13,7 @@ fprintf('Loading %s...\n',filename)
 load(filename)
 signals = signals(signums);
 methods = methods([1,2,3,8,9,7,5]);
+methodnames = methodnames([1,2,3,8,9,7,5]);
 
 % measures
 % measures = {'SNR','PEMOQ','PEAQ'};
@@ -125,7 +126,7 @@ for measure = 1:length(measures)
                     hold on
                 end
             end
-            legend(h,methods)
+            legend(h,methodnames)
             xlabel('gap length (ms)')
             if fig == 2
                 set(gca,'YScale','log')
@@ -163,7 +164,7 @@ for measure = 1:length(measures)
 
             % plot
             plot(glengths,squeeze(data(s,:,:)))
-            legend(methods)
+            legend(methodnames)
             xlabel('gap length (ms)')
             ylabel(ylabels{measure})
             title(signals{s},'interpreter','none')
