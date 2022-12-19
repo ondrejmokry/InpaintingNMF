@@ -22,9 +22,9 @@ mask = rand(L,1) > 0.6;
 
 %% settings
 % algorithm
-maxit = 100; % (50 in declipping survey)
+maxit = 50; % (50 in declipping survey)
 nmfit = 1;   % (1 in declipping survey)
-epsilon = 1e-4;
+epsilon = 1e-3;
 
 % segmentation
 M = 1024; % segment length (2048 in declipping survey)
@@ -84,8 +84,8 @@ for m = 1:length(methods)
             /norm(restored(:,i-1));
     end
     
-    fprintf('     Elapsed time is %.1f seconds.\n',t)
-    fprintf('     SNR is %.2f dB.\n',SNRs(end))
+    fprintf('       Elapsed time is %.1f seconds.\n',t)
+    fprintf('       SNR is %.2f dB.\n',SNRs(end))
     
     % save
     results.signals{m}    = restored(:,end);
