@@ -14,8 +14,8 @@ load(filename)
 signals = signals(signums);
 
 % reorder according to the submitted paper
-methods = methods([1, 2, 3, 8, 9, 7, 5, 4, 6, 10]);
-methodnames = methodnames([1, 2, 3, 8, 9, 7, 5, 4, 6, 10]);
+methods = methods([1, 2, 3, 8, 9, 7, 5]);
+methodnames = methodnames([1, 2, 3, 8, 9, 7, 5]);
 
 % measures
 measures = {'SNR','PEMOQ','PEAQ'};
