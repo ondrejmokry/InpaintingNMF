@@ -1,4 +1,4 @@
-function [restored, W, H, relnorms, objectives] = ainmf(method,signal,mask,K,maxit,varargin)
+function [restored, W, H, relnorms, objectives] = ainmf(method, signal, mask, K, maxit, varargin)
 % AINMF wraps three closely related reconstruction algorithms for audio
 % inpainting based on nonnegative matrix factorization (NMF):
 % (EM-tf) the approach from [1], i.e. the generalized EM algorithm where
@@ -55,10 +55,10 @@ function [restored, W, H, relnorms, objectives] = ainmf(method,signal,mask,K,max
 %
 %
 % [1] C. Bilen, A. Ozerov, and P. Perez, "Audio declipping via nonnegative
-%     matrix factorization," in 2015 IEEE Workshop on Applications of
+%     matrix factorization, " in 2015 IEEE Workshop on Applications of
 %     Signal Processing to Audio and Acoustics (WASPAA), 2015.
 % [2] P. Zaviska, P. Rajmic, A. Ozerov, and L. Rencker, "A survey and
-%     an extensive evaluation of popular audio declipping methods," in IEEE
+%     an extensive evaluation of popular audio declipping methods, " in IEEE
 %     Journal of Selected Topics in Signal Processing, 2021.
 %
 %
@@ -77,20 +77,20 @@ pars = inputParser;
 pars.KeepUnmatched = true;
 
 % add optional name-value pairs
-addParameter(pars,'nmfit',1)
-addParameter(pars,'saveall',false)
-addParameter(pars,'M',2048)
-addParameter(pars,'a',1024)
-addParameter(pars,'F',2048)
-addParameter(pars,'verbose',false)
-addParameter(pars,'drawing',false)
-addParameter(pars,'likelihood',[])
-addParameter(pars,'epsilon',1e-4)
-addParameter(pars,'tolsol',0)
-addParameter(pars,'tolobj',0)
-addParameter(pars,'keepconj',true)
-addParameter(pars,'usegpu',false)
-addParameter(pars,'usechol',false)
+addParameter(pars, 'nmfit', 1)
+addParameter(pars, 'saveall', false)
+addParameter(pars, 'M', 2048)
+addParameter(pars, 'a', 1024)
+addParameter(pars, 'F', 2048)
+addParameter(pars, 'verbose', false)
+addParameter(pars, 'drawing', false)
+addParameter(pars, 'likelihood', [])
+addParameter(pars, 'epsilon', 1e-4)
+addParameter(pars, 'tolsol', 0)
+addParameter(pars, 'tolobj', 0)
+addParameter(pars, 'keepconj', true)
+addParameter(pars, 'usegpu', false)
+addParameter(pars, 'usechol', false)
 
 % parse
 parse(pars, varargin{:})
@@ -137,8 +137,8 @@ if drawing
 end
 
 %% constructing the operators T and U
-Uop = @(x) fft(x,F)/sqrt(F);
-Top = @(x) crop(ifft(x),M)*sqrt(F);
+Uop = @(x) fft(x, F)/sqrt(F);
+Top = @(x) crop(ifft(x), M)*sqrt(F);
 Tmat = Top(eye(F));
 Umat = Uop(eye(M));
 if usegpu
@@ -150,8 +150,8 @@ end
 % signal padding
 L = ceil(length(signal)/a)*a; % + (ceil(M/a)-1)*a;
 N = L/a; % number of signal segments
-data = [signal; zeros(L-length(signal),1)];
-mask = [mask; true(L-length(signal),1)]; % logical mask of the reliable samples
+data = [signal; zeros(L-length(signal), 1)];
+mask = [mask; true(L-length(signal), 1)]; % logical mask of the reliable samples
 
 % random initialization of the parameters W, H
 rng(0)
@@ -162,19 +162,19 @@ if usegpu
     H = gpuArray(H);
 end
 
-% isconj = @(X) norm(X(floor(F/2)+2:end,:) - conj(flipud(X(2:floor(F/2),:)))) < 1e-10;
+% isconj = @(X) norm(X(floor(F/2)+2:end, :) - conj(flipud(X(2:floor(F/2), :)))) < 1e-10;
 
 % ensure symmetry of W if desired
 % (conjugacy is not necessary since W is real)
 if keepconj
-    W(floor(F/2)+2:end,:) = flipud(W(2:floor(F/2),:));
+    W(floor(F/2)+2:end, :) = flipud(W(2:floor(F/2), :));
 end
 
 % initialize the solution matrix
 if saveall
-    mrestored_all = zeros(M,maxit,N);
+    mrestored_all = zeros(M, maxit, N);
 else
-    mrestored = zeros(M,N);
+    mrestored = zeros(M, N);
 end
 if usegpu
     if saveall
@@ -186,21 +186,21 @@ end
     
 % construct the analysis and synthesis windows
 g = gabwin('sine', a, M, L);
-gana = normalize(g,'peak'); % peak-normalization of the analysis window
+gana = normalize(g, 'peak'); % peak-normalization of the analysis window
 gana = fftshift(gana);
 gsyn = gabdual(gana, a, M)*M; % computing the synthesis window
 
 % segment settings
-mdata = NaN(M,N);
-mmask = false(M,N);
+mdata = NaN(M, N);
+mmask = false(M, N);
 for n = 1:N
     % defining the indices of the current block
     indices = 1 + (n-1)*a - floor(M/2) : (n-1)*a + ceil(M/2);
     indices = 1 + mod(indices-1, L);
     
     % defining the block data and masks
-    mdata(:,n) = data(indices) .* gana;
-    mmask(:,n) = mask(indices);
+    mdata(:, n) = data(indices) .* gana;
+    mmask(:, n) = mask(indices);
 end
 if usegpu
     mdata = gpuArray(mdata);
@@ -212,11 +212,11 @@ UT = Umat*Tmat;
 
 % if desired, initialize the relative norm and objective values
 if nargout > 3 || tolsol > 0
-    relnorms = NaN(maxit,1);
-    presolution = NaN(L,1);
+    relnorms = NaN(maxit, 1);
+    presolution = NaN(L, 1);
 end
 if nargout > 4 || tolobj > 0
-    objectives = NaN(maxit,1);
+    objectives = NaN(maxit, 1);
 end
 
 % prepare the low-rank representation
@@ -237,28 +237,28 @@ for i = 1:maxit
     end
 
     if verbose
-        fprintf(repmat('\b',1,length(str)))
-        str = sprintf('%-6s Iteration %d of %d.\n', [method,':'], i, maxit);
+        fprintf(repmat('\b', 1, length(str)))
+        str = sprintf('%-6s Iteration %d of %d.\n', [method, ':'], i, maxit);
         fprintf('%s', str)
     end
 
     % prepare the matrix for the power spectrum
-    P = NaN(F,N);
+    P = NaN(F, N);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                         %
-%                 e-step (EM-tf, EM-t) / signal update (AM)                  %
+%                 e-step (EM-tf, EM-t) / signal update (AM)               %
 %                                                                         %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    if strcmpi(method,'EMtf')
+    if strcmpi(method, 'EMtf')
         parfor n = 1:N
-            if sum(mmask(:,n)) == M
-                s = Uop(mdata(:,n));
+            if sum(mmask(:, n)) == M
+                s = Uop(mdata(:, n));
                 diagSigma = 0;
             else
-                MT = Tmat(mmask(:,n),:); %#ok<*PFBNS>
-                DTM = MT'.*V(:,n);
+                MT = Tmat(mmask(:, n), :); %#ok<*PFBNS>
+                DTM = MT'.*V(:, n);
                 MTDTM = MT*DTM;
                 if keepconj
                     MTDTM = real(MTDTM);
@@ -269,29 +269,29 @@ for i = 1:maxit
                 else
                     DTMMTDTM = DTM/MTDTM;
                 end
-                s = DTMMTDTM*mdata(mmask(:,n),n);
-                diagSigma = V(:,n) - sum(DTMMTDTM .* conj(DTM), 2);
+                s = DTMMTDTM*mdata(mmask(:, n), n);
+                diagSigma = V(:, n) - sum(DTMMTDTM .* conj(DTM), 2);
             end
             
             % saving the current solution
             if saveall
-                mrestored_all(:,i,n) = real(Top(s)); 
+                mrestored_all(:, i, n) = real(Top(s)); 
             else
-                mrestored(:,n) = real(Top(s));
+                mrestored(:, n) = real(Top(s));
             end
             
             % posterior power spectrum
-            P(:,n) = abs(s).^2 + abs(diagSigma);
+            P(:, n) = abs(s).^2 + abs(diagSigma);
         end
     end
-    if strcmpi(method,'EMt')
+    if strcmpi(method, 'EMt')
         parfor n = 1:N
-            if sum(mmask(:,n)) == M
-                s = Uop(mdata(:,n));
+            if sum(mmask(:, n)) == M
+                s = Uop(mdata(:, n));
                 diagSigma = 0;
             else
-                MT = Tmat(mmask(:,n),:); %#ok<*PFBNS>
-                DTM = MT'.*V(:,n);
+                MT = Tmat(mmask(:, n), :); %#ok<*PFBNS>
+                DTM = MT'.*V(:, n);
                 MTDTM = MT*DTM;
                 if keepconj
                     MTDTM = real(MTDTM);
@@ -302,39 +302,39 @@ for i = 1:maxit
                 else
                     DTMMTDTM = DTM/MTDTM;
                 end
-                s = Uop(Top(DTMMTDTM*mdata(mmask(:,n),n)));
-                diagSigma = sum((Uop(Top(diag(V(:,n)) - DTMMTDTM*DTM'))) .* conj(UT), 2);
+                s = Uop(Top(DTMMTDTM*mdata(mmask(:, n), n)));
+                diagSigma = sum((Uop(Top(diag(V(:, n)) - DTMMTDTM*DTM'))) .* conj(UT), 2);
             end
             
             % saving the current solution
             if saveall
-                mrestored_all(:,i,n) = real(Top(s)); 
+                mrestored_all(:, i, n) = real(Top(s)); 
             else
-                mrestored(:,n) = real(Top(s));
+                mrestored(:, n) = real(Top(s));
             end
             
             % posterior power spectrum
-            P(:,n) = abs(s).^2 + abs(diagSigma);
+            P(:, n) = abs(s).^2 + abs(diagSigma);
         end
     end
-    if strcmpi(method,'am')
+    if strcmpi(method, 'am')
         parfor n = 1:N
             % signal update
-            if sum(mmask(:,n)) == M
-                xhat = mdata(:,n);
+            if sum(mmask(:, n)) == M
+                xhat = mdata(:, n);
                 s = Uop(xhat);
             else
-                MT = Tmat(mmask(:,n),:); %#ok<*PFBNS>
-                DTM = MT'.*V(:,n);
+                MT = Tmat(mmask(:, n), :); %#ok<*PFBNS>
+                DTM = MT'.*V(:, n);
                 MTDTM = MT*DTM;
                 if keepconj
                     MTDTM = real(MTDTM);
                 end
                 if usechol
                     R = chol(real(MTDTM));
-                    MTDTMx = R\(R'\mdata(mmask(:,n),n));
+                    MTDTMx = R\(R'\mdata(mmask(:, n), n));
                 else
-                    MTDTMx = MTDTM\mdata(mmask(:,n),n);
+                    MTDTMx = MTDTM\mdata(mmask(:, n), n);
                 end
                 s = DTM*MTDTMx; % useful later for power spectrum
                 xhat = Top(s);
@@ -342,24 +342,24 @@ for i = 1:maxit
 
             % saving the current solution
             if saveall
-                mrestored_all(:,i,n) = real(xhat);
+                mrestored_all(:, i, n) = real(xhat);
             else
-                mrestored(:,n) = real(xhat);
+                mrestored(:, n) = real(xhat);
             end
 
             % power spectrum (for the model update)
-            P(:,n) = abs(s).^2;
+            P(:, n) = abs(s).^2;
         end
     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                         %
-%                  m-step (EM-tf, EM-t) / model update (AM)                  %
+%                  m-step (EM-tf, EM-t) / model update (AM)               %
 %                                                                         %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     if drawing
-        dis = zeros(nmfit,1);
+        dis = zeros(nmfit, 1);
     end
 
     % iterate
@@ -372,13 +372,13 @@ for i = 1:maxit
         V = W*H + epsilon;
         
         % normalization
-        scale = sum(W,1);
+        scale = sum(W, 1);
         W = W ./ scale;
         H = H .* scale';
 
         % computing the Itakura-Saito divergence
         if drawing
-            dis(j) = sum(P./V - log(P./V) - 1,'all');
+            dis(j) = sum(P./V - log(P./V) - 1, 'all');
         end
         
     end
@@ -393,15 +393,15 @@ for i = 1:maxit
         
         % read only the current matrix solution
         if saveall
-            mrestored = squeeze(mrestored_all(:,i,:));
+            mrestored = squeeze(mrestored_all(:, i, :));
         end
         
         % overlap-add
-        postsolution = zeros(L,1);
+        postsolution = zeros(L, 1);
         for n = 1:N
             indices = 1 + (n-1)*a - floor(M/2) : (n-1)*a + ceil(M/2);
             indices = 1 + mod(indices-1, L);
-            postsolution(indices) = postsolution(indices) + mrestored(:,n).*gsyn;
+            postsolution(indices) = postsolution(indices) + mrestored(:, n).*gsyn;
         end
         
         % compute the relative norm
@@ -422,19 +422,19 @@ for i = 1:maxit
     
     if nargout > 4 || tolobj > 0
         if isempty(likelihood)
-            if strcmpi(method,'am')
+            if strcmpi(method, 'am')
                 likelihood = 'full';
             else
                 likelihood = 'observation';
             end
         end
-        if strcmpi(likelihood,'observation')
-            objectives(i) = objectiveObservation(V,Tmat,mmask,mdata,keepconj);
+        if strcmpi(likelihood, 'observation')
+            objectives(i) = objectiveObservation(V, Tmat, mmask, mdata, keepconj);
         else
             if saveall
-                mrestored = squeeze(mrestored_all(:,i,:));
+                mrestored = squeeze(mrestored_all(:, i, :));
             end
-            objectives(i) = objectiveFull(V,Tmat,mmask,mrestored,keepconj);
+            objectives(i) = objectiveFull(V, Tmat, mmask, mrestored, keepconj);
         end
         
         % stop execution if objective computation fails
@@ -451,30 +451,30 @@ for i = 1:maxit
 
     if drawing
         if nmfit > 1
-            semilogy(tilenmf,dis)
-            xlabel(tilenmf,'iteration of NMF')
-            ylabel(tilenmf,'DIS(P,V)')
-            title(tilenmf,'Itakura-Saito divergence')
+            semilogy(tilenmf, dis)
+            xlabel(tilenmf, 'iteration of NMF')
+            ylabel(tilenmf, 'DIS(P, V)')
+            title(tilenmf, 'Itakura-Saito divergence')
         end
         if nargout > 3 || tolsol > 0
-            semilogy(tilesol,relnorms)
-            xlabel(tilesol,['iteration of ', method])
-            ylabel(tilesol,'relative solution change')
-            title(tilesol,'relative solution change')
+            semilogy(tilesol, relnorms)
+            xlabel(tilesol, ['iteration of ', method])
+            ylabel(tilesol, 'relative solution change')
+            title(tilesol, 'relative solution change')
         end
         if nargout > 4 || tolobj > 0
-            plot(tileobj,objectives)
-            xlabel(tileobj,['iteration of ', method])
-            ylabel(tileobj,'objective function')
-            title(tileobj,'objective function')
+            plot(tileobj, objectives)
+            xlabel(tileobj, ['iteration of ', method])
+            ylabel(tileobj, 'objective function')
+            title(tileobj, 'objective function')
         end
-        imagesc(tileV,log10(abs(V)))
-        set(gca,'YDir','normal')
+        imagesc(tileV, log10(abs(V)))
+        set(gca, 'YDir', 'normal')
         colorbar
-        xlabel(tileV,'time frame')
-        ylabel(tileV,'frequency bin')
-        title(tileV,'magnitude of V = W*H + epsilon')
-        title(tiles,sprintf('%s iteration %d',method,i))
+        xlabel(tileV, 'time frame')
+        ylabel(tileV, 'frequency bin')
+        title(tileV, 'magnitude of V = W*H + epsilon')
+        title(tiles, sprintf('%s iteration %d', method, i))
         drawnow
     end
     
@@ -506,29 +506,29 @@ end
 
 %% overlap-add
 if saveall
-    restored = zeros(L,maxit);
+    restored = zeros(L, maxit);
     for n = 1:N
         indices = 1 + (n-1)*a - floor(M/2) : (n-1)*a + ceil(M/2);
         indices = 1 + mod(indices-1, L);
-        restored(indices,:) = restored(indices,:) + mrestored_all(:,:,n).*repmat(gsyn,1,maxit);
+        restored(indices, :) = restored(indices, :) + mrestored_all(:, :, n).*repmat(gsyn, 1, maxit);
     end
 else
-    restored = zeros(L,1);
+    restored = zeros(L, 1);
     for n = 1:N
         indices = 1 + (n-1)*a - floor(M/2) : (n-1)*a + ceil(M/2);
         indices = 1 + mod(indices-1, L);
-        restored(indices) = restored(indices) + mrestored(:,n).*gsyn;
+        restored(indices) = restored(indices) + mrestored(:, n).*gsyn;
     end
 end
 
 %% output
 % crop the solution back to the original length
-restored = crop(restored,length(signal));
+restored = crop(restored, length(signal));
 
 % if the iteration stopped before maxit, crop also along the iteration
 % dimension
 if saveall
-    restored = restored(:,1:i);
+    restored = restored(:, 1:i);
 end
 
 % crop the convergence profiles
@@ -549,12 +549,12 @@ end
 %% functions
 % the objective function computed only from the observed samples
 % (default in EM-tf or EM-t)
-function val = objectiveObservation(V,T,mmask,mdata,keepconj)
-    N = size(V,2);
-    val = NaN(N,1);
+function val = objectiveObservation(V, T, mmask, mdata, keepconj)
+    N = size(V, 2);
+    val = NaN(N, 1);
     parfor n = 1:N
-        MT = T(mmask(:,n),:);
-        DTM = MT'.*V(:,n);
+        MT = T(mmask(:, n), :);
+        DTM = MT'.*V(:, n);
         MTDTM = MT*DTM;
         if keepconj
             MTDTM = real(MTDTM);
@@ -563,9 +563,9 @@ function val = objectiveObservation(V,T,mmask,mdata,keepconj)
         end
         [R, er] = chol(MTDTM); % useful for stable determinant computation
         if ~er
-            val(n) = sum(mmask(:,n)) * log(pi)...
+            val(n) = sum(mmask(:, n)) * log(pi)...
                  + 2 * sum(log(diag(R)))...
-                 + mdata(mmask(:,n),n)'*(R\(R'\mdata(mmask(:,n),n)));      
+                 + mdata(mmask(:, n), n)'*(R\(R'\mdata(mmask(:, n), n)));      
         end
     end
     val = real(sum(val));
@@ -573,12 +573,12 @@ end
 
 % the objective function computed from the whole recovered signal
 % (default in AM)
-function val = objectiveFull(V,T,mmask,mrestored,keepconj)
-    N = size(V,2);
-    val = NaN(N,1);
+function val = objectiveFull(V, T, mmask, mrestored, keepconj)
+    N = size(V, 2);
+    val = NaN(N, 1);
     parfor n = 1:N
-        xhat = mrestored(:,n);
-        TDT = T*(T'.*V(:,n));
+        xhat = mrestored(:, n);
+        TDT = T*(T'.*V(:, n));
         if keepconj
             TDT = real(TDT);
         else
@@ -586,7 +586,7 @@ function val = objectiveFull(V,T,mmask,mrestored,keepconj)
         end
         [R, er] = chol(TDT); % useful for stable determinant computation
         if ~er
-            val(n) = length(mmask(:,n)) * log(pi)...
+            val(n) = length(mmask(:, n)) * log(pi)...
                  + 2 * sum(log(diag(R)))...
                  + xhat'*(R\(R'\xhat));
         end
